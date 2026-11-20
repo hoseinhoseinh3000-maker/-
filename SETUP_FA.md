@@ -6,11 +6,12 @@
 1. وارد https://supabase.com شوید و یک حساب بسازید.
 2. یک پروژه جدید بسازید و رمز پایگاه داده را در جای امن نگه دارید.
 3. از بخش SQL Editor فایل `supabase/schema.sql` همین مخزن را باز کنید، تمام کد آن را اجرا کنید.
-4. در بخش Authentication > Users یک کاربر برای خودتان ایجاد کنید. ایمیل و رمز قوی انتخاب کنید.
-5. به SQL Editor برگردید و این دستور را با ایمیل خودتان اجرا کنید:
+4. در بخش Authentication > Settings، گزینه اجازه ثبت‌نام عمومی (Allow new users to sign up) را خاموش کنید؛ کاربران فقط باید توسط مدیر ساخته شوند.
+5. در بخش Authentication > Users روی Add user و سپس Create new user بزنید؛ ایمیل خود و یک رمز قوی وارد کنید. اگر گزینه تأیید خودکار ایمیل را دیدید، آن را فعال کنید.
+6. به SQL Editor برگردید و این دستور را با ایمیل خودتان اجرا کنید:
    `update public.profiles set role = 'admin' where email = 'YOUR_ADMIN_EMAIL';`
    مقدار ایمیل را با ایمیل واقعی مدیر جایگزین کنید.
-6. در Project Settings > API، Project URL و کلید عمومی anon/publishable را بردارید.
+7. از Settings > API Keys، Project URL و کلید عمومی Publishable (با پیشوند sb_publishable_) را بردارید. فقط همین کلید عمومی در سایت استفاده می‌شود.
 
 ## ۲) اتصال GitHub Pages به Supabase
 1. فایل `config.js` را در GitHub باز کنید و روی مداد (Edit) بزنید.
@@ -25,20 +26,19 @@
 4. Branch را روی main و Folder را روی /(root) بگذارید و Save بزنید.
 5. پس از پایان انتشار، نشانی Pages در همان صفحه نمایش داده می‌شود. چند دقیقه برای انتشار اولیه زمان لازم است.
 
-## ۴) فعال‌کردن ساخت حساب از داخل پنل مدیر
-این بخش باعث می‌شود مدیر بتواند از داخل سایت برای هر عضو ایمیل و رمز بسازد. کلید محرمانه فقط در محیط Supabase Edge Function استفاده می‌شود.
+## ۴) فعال‌کردن ساخت حساب از داخل پنل مدیر (بدون ترمینال)
+این بخش باعث می‌شود مدیر بتواند از داخل سایت برای هر عضو حساب و رمز بسازد.
 
-نیاز به نصب Supabase CLI روی رایانه دارد. اگر Node.js نصب است:
-```bash
-npm install -g supabase
-supabase login
-```
-در داشبورد Supabase، Project Settings > General، شناسه پروژه (Project Ref) را بردارید. سپس در پوشه‌ای که این مخزن را clone کرده‌اید:
-```bash
-supabase link --project-ref YOUR_PROJECT_REF
-supabase functions deploy create-member
-```
-Edge Function در محیط سرور Supabase از کلید محرمانه استفاده می‌کند. در صورت نیاز کلید محرمانه را از Edge Function Secrets با نام `SUPABASE_SERVICE_ROLE_KEY` تنظیم کنید. **این کلید را هرگز در مخزن GitHub قرار ندهید.**
+1. در GitHub فایل `supabase/functions/create-member/index.ts` را باز کنید.
+2. روی دکمه Raw بزنید، سپس همه کد را انتخاب و کپی کنید.
+3. به داشبورد Supabase برگردید و پروژه خود را باز کنید.
+4. از منوی سمت چپ وارد Edge Functions شوید.
+5. روی Deploy a new function بزنید و Via Editor را انتخاب کنید.
+6. نام تابع را دقیقاً `create-member` بگذارید. اگر قالب اولیه نمایش داده شد، تمام کد آن را پاک کنید.
+7. کدی را که از فایل Raw کپی کردید در ویرایشگر قرار دهید و Deploy function را بزنید.
+8. بعد از انتشار موفق، در صورت استفاده از کلیدهای جدید، تابع از مقدار پیش‌فرض `SUPABASE_SECRET_KEYS` استفاده می‌کند. اگر پروژه‌ات کلید محرمانه را به شکل جداگانه تنظیم می‌کند، از Edge Function Secrets یک متغیر با نام `SERVICE_ROLE_KEY` بساز و مقدار Secret key را همان‌جا قرار بده. **هرگز Secret key را در GitHub، config.js یا این گفتگو نگذار.**
+
+راهنمای رسمی Supabase برای ساخت تابع مستقیماً از داشبورد: https://supabase.com/docs/guides/functions/quickstart-dashboard
 
 ## ۵) استفاده
 - با ایمیل و رمز مدیر وارد سایت شوید.
