@@ -19,7 +19,14 @@ Deno.serve(async (req: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const secretKey = Deno.env.get("SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SECRET_KEY") ?? "";
+  let platformSecret = "";
+  try {
+    const keysJson = Deno.env.get("SUPABASE_SECRET_KEYS") ?? "";
+    if (keysJson) platformSecret = String(JSON.parse(keysJson).default ?? "");
+  } catch {
+    // Fall back to explicitly configured server-only secrets below.
+  }
+  const secretKey = Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || platformSecret || Deno.env.get("SUPABASE_SECRET_KEY") || "";
   const authHeader = req.headers.get("Authorization") ?? "";
 
   if (!supabaseUrl || !anonKey || !secretKey) {
