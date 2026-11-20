@@ -18,7 +18,14 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return reply(405, { error: "Method not allowed" });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  let publishableKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  try {
+    const keysJson = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "";
+    if (!publishableKey && keysJson) publishableKey = String(JSON.parse(keysJson).default ?? "");
+  } catch {
+    // Fall back to the legacy anon key if present.
+  }
+  const anonKey = publishableKey;
   let platformSecret = "";
   try {
     const keysJson = Deno.env.get("SUPABASE_SECRET_KEYS") ?? "";
