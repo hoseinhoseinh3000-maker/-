@@ -71,9 +71,11 @@
     btn.disabled=false;btn.textContent="ساخت حساب";
     const out=$("#credentialResult");
     if(error){out.innerHTML='<div class="alert error">ساخت حساب انجام نشد. مطمئن شو تابع create-member در Supabase منتشر شده است. '+esc(error.message)+'</div>';return;}
-    out.innerHTML='<div class="alert success">حساب با موفقیت ساخته شد. ایمیل و رمز را به‌صورت امن به عضو تحویل بده.</div><div class="credentials">نام: '+esc(data.full_name)+'<br>ایمیل ورود: <code>'+esc(data.email)+'</code><br>رمز اولیه: <code>'+esc(f.get("password"))+'</code></div>';
+    const credentialsHTML='<div class="alert success">حساب با موفقیت ساخته شد. ایمیل و رمز را به‌صورت امن به عضو تحویل بده.</div><div class="credentials">نام: '+esc(data.full_name)+'<br>ایمیل ورود: <code>'+esc(data.email)+'</code><br>رمز اولیه: <code>'+esc(f.get("password"))+'</code></div>';
     ev.currentTarget.reset();
     await adminMembers();
+    const resultBox=$("#credentialResult");
+    if(resultBox) resultBox.innerHTML=credentialsHTML;
   }
   async function toggleMember(id,wasActive) {
     const {error}=await client.from("profiles").update({is_active:!wasActive}).eq("id",id);
