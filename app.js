@@ -4,6 +4,7 @@
   const app = $("#app");
   const cfg = window.SARBAZAN_CONFIG || {};
   let client = null, authUser = null, profile = null, selectedMember = null;
+  let activePage = "home", registrationChannel = null;
 
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const shortName = (s) => (String(s || "?").trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("") || "?");
@@ -29,7 +30,10 @@
     app.innerHTML = '<div class="shell"><aside class="side"><div class="brand"><div class="logo">✦</div><div><b>سربازان امام زمان</b><small>سامانه مدیریت فرهنگی</small></div></div><div class="navlabel">فضای کاری</div><nav class="nav">'+
       (admin?'<button data-go="home" class="active">▦ نمای کلی</button><button data-go="members">♙ مدیریت اعضا</button><button data-go="requests">✉ درخواست‌های حساب</button><button data-go="announcements">✧ اطلاعیه عمومی</button>':'<button data-go="home" class="active">▦ پنل اختصاصی من</button>')+
       '<button data-go="password">⚿ تغییر رمز عبور</button></nav><div class="sidefoot">● اتصال مرکزی فعال<br>دسترسی‌ها توسط پایگاه داده کنترل می‌شوند.</div></aside><main class="main"><header class="top"><div><p class="eyebrow">مرکز مدیریت فرهنگی</p><h1>'+esc(title)+'</h1><div class="panelhint">'+esc(subtitle)+'</div></div><div class="userchip"><span class="avatar">'+esc(shortName(profile.full_name))+'</span><span>'+esc(profile.full_name)+'<br><small class="muted">'+(admin?'مدیر سامانه':'عضو مجموعه')+'</small></span><button class="btn small" id="logoutBtn">خروج</button></div></header><div id="flash" hidden></div><section id="page">'+body+'</section><div class="footer">پنل اختصاصی • اطلاعات به‌صورت مرکزی و آنلاین ذخیره می‌شود</div></main></div>';
-    $("#logoutBtn").addEventListener("click", async()=>{await client.auth.signOut();authUser=null;profile=null;loginView();});
+    $("#logoutBtn").addEventListener("click", async()=>{
+      if(registrationChannel){await client.removeChannel(registrationChannel);registrationChannel=null;}
+      await client.auth.signOut();authUser=null;profile=null;loginView();
+    });
     document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.go)));
   }
   async function loadProfile() {
@@ -40,7 +44,26 @@
     if(error || !data){await client.auth.signOut();loginView();notice("پروفایل حساب پیدا نشد؛ مدیر باید حساب را در پایگاه داده بررسی کند.","error");return;}
     if(!data.is_active){await client.auth.signOut();loginView();notice("این حساب توسط مدیر غیرفعال شده است.","error");return;}
     profile=data;
-    if(profile.role==="admin") await adminHome(); else await memberHome();
+    if(profile.role==="admin") {
+      subscribeAdminRequests();
+      await adminHome();
+    } else {
+      if(registrationChannel){await client.removeChannel(registrationChannel);registrationChannel=null;}
+      await memberHome();
+    }
+  }
+  function subscribeAdminRequests() {
+    if(registrationChannel) client.removeChannel(registrationChannel);
+    registrationChannel = client.channel("admin-registration-requests")
+      .on("postgres_changes", { event:"INSERT", schema:"public", table:"registration_requests" }, async () => {
+        if(profile?.role !== "admin") return;
+        if(activePage === "home") await adminHome();
+        else if(activePage === "requests") await adminRequests();
+        const navButton = $('[data-go="requests"]');
+        if(navButton) navButton.innerHTML = '✉ درخواست‌های حساب <span class="badge pending">جدید</span>';
+        notice("درخواست ساخت حساب جدید دریافت شد.", "success");
+      })
+      .subscribe();
   }
   async function adminHome() {
     const [{count:members},{count:entries},{count:notices},{count:requests}] = await Promise.all([
@@ -206,6 +229,7 @@
     });
   }
   async function navigate(where) {
+    activePage=where;
     if(where==="home"){if(profile.role==="admin")await adminHome();else await memberHome();}
     else if(where==="members" && profile.role==="admin")await adminMembers();
     else if(where==="announcements" && profile.role==="admin")await adminAnnouncements();
