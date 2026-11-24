@@ -99,7 +99,7 @@ def dashboard():
  with db() as c:
   notes=c.execute("SELECT * FROM private_notes WHERE member_id=? ORDER BY id DESC",(u["id"],)).fetchall()
   ann=c.execute("SELECT * FROM announcements ORDER BY id DESC LIMIT 30").fetchall()
- body=hero("پنل اختصاصی "+u["full_name"],"این بخش فقط برای حساب خودت و مدیر سامانه قابل مشاهده است.")+'<h2 class="section">اطلاعات اختصاصی من</h2>'
+ body=hero("پنل اختصاصی "+u["full_name"],"این بخش فقط برای حساب خودت و مدیر سامانه قابل مشاهده است.")+'<a class="btn" href="/change-password">تغییر رمز عبور</a><h2 class="section">اطلاعات اختصاصی من</h2>'
  body+=''.join(f'<article class="note"><h3>{escape(n["title"])}</h3><p>{escape(n["body"])}</p><small class="muted">{escape(n["created_at"])}</small></article>' for n in notes) or '<div class="card empty">هنوز اطلاعات اختصاصی ثبت نشده است.</div>'
  body+='<h2 class="section">اطلاعیه‌های مجموعه</h2>'+''.join(f'<article class="note"><h3>{escape(n["title"])}</h3><p>{escape(n["body"])}</p></article>' for n in ann) or '<div class="card empty">اطلاعیه‌ای ثبت نشده است.</div>'
  return page(body,"پنل عضو",u)
