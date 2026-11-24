@@ -18,22 +18,18 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return reply(405, { error: "Method not allowed" });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  let publishableKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  try {
-    const keysJson = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "";
-    if (!publishableKey && keysJson) publishableKey = String(JSON.parse(keysJson).default ?? "");
-  } catch {
-    // Fall back to the legacy anon key if present.
-  }
-  const anonKey = publishableKey;
+  let publishableKey = "";
   let platformSecret = "";
   try {
-    const keysJson = Deno.env.get("SUPABASE_SECRET_KEYS") ?? "";
-    if (keysJson) platformSecret = String(JSON.parse(keysJson).default ?? "");
-  } catch {
-    // Fall back to explicitly configured server-only secrets below.
-  }
-  const secretKey = Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || platformSecret || Deno.env.get("SUPABASE_SECRET_KEY") || "";
+    const publicKeys = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") || "{}");
+    publishableKey = String(publicKeys.default || "");
+  } catch { /* use legacy anon key below */ }
+  try {
+    const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
+    platformSecret = String(secretKeys.default || "");
+  } catch { /* use legacy service-role key below */ }
+  const anonKey = publishableKey || Deno.env.get("SUPABASE_ANON_KEY") || "";
+  const secretKey = platformSecret || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
   const authHeader = req.headers.get("Authorization") ?? "";
 
   if (!supabaseUrl || !anonKey || !secretKey) {
