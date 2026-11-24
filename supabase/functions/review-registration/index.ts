@@ -35,10 +35,10 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return reply(405, { error: "Method not allowed" });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const publishableKey = Deno.env.get("SUPABASE_ANON_KEY") || (() => {
-    try { return String(JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") || "{}").default || ""); }
-    catch { return ""; }
-  })();
+  let publishableKey = "";
+  try { publishableKey = String(JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") || "{}").default || ""); }
+  catch { /* use legacy anon key below */ }
+  publishableKey = publishableKey || Deno.env.get("SUPABASE_ANON_KEY") || "";
   const secretKey = getSecretKey();
   const authHeader = req.headers.get("Authorization") || "";
 
