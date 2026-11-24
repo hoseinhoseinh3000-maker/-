@@ -33,6 +33,30 @@ create table if not exists public.announcements (
 create index if not exists announcements_created_idx
   on public.announcements(created_at desc);
 
+-- Requests submitted by visitors who do not yet have an account.
+-- Public visitors can submit only through the request-access Edge Function.
+create table if not exists public.registration_requests (
+  id uuid primary key default gen_random_uuid(),
+  full_name text not null,
+  email text not null,
+  phone text,
+  reason text,
+  status text not null default 'pending'
+    check (status in ('pending','processing','approved','rejected')),
+  request_ip_hash text not null,
+  created_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  reviewed_by uuid references public.profiles(id),
+  created_user_id uuid references public.profiles(id) on delete set null
+);
+create index if not exists registration_requests_status_created_idx
+  on public.registration_requests(status, created_at desc);
+create index if not exists registration_requests_ip_created_idx
+  on public.registration_requests(request_ip_hash, created_at desc);
+create unique index if not exists registration_requests_open_email_uidx
+  on public.registration_requests(lower(email))
+  where status in ('pending','processing');
+
 -- New auth users receive a basic member profile.
 create or replace function public.handle_new_user()
 returns trigger
@@ -81,14 +105,18 @@ grant execute on function public.is_sarbazan_admin() to authenticated;
 alter table public.profiles enable row level security;
 alter table public.member_entries enable row level security;
 alter table public.announcements enable row level security;
+alter table public.registration_requests enable row level security;
 
 revoke all on public.profiles from anon;
 revoke all on public.member_entries from anon;
 revoke all on public.announcements from anon;
+revoke all on public.registration_requests from anon;
+revoke all on public.registration_requests from authenticated;
 
 grant select, update on public.profiles to authenticated;
 grant select, insert, delete on public.member_entries to authenticated;
 grant select, insert, delete on public.announcements to authenticated;
+grant select on public.registration_requests to authenticated;
 
 drop policy if exists "profiles read self or admin" on public.profiles;
 create policy "profiles read self or admin" on public.profiles
@@ -129,6 +157,11 @@ with check ((select public.is_sarbazan_admin()) and created_by = (select auth.ui
 drop policy if exists "admin deletes announcements" on public.announcements;
 create policy "admin deletes announcements" on public.announcements
 for delete to authenticated
+using ((select public.is_sarbazan_admin()));
+
+drop policy if exists "admin reads registration requests" on public.registration_requests;
+create policy "admin reads registration requests" on public.registration_requests
+for select to authenticated
 using ((select public.is_sarbazan_admin()));
 
 -- After creating your own first user in Authentication > Users, replace the email:
