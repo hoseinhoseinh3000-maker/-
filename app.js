@@ -91,14 +91,14 @@
   }
   async function createMember(ev) {
     ev.preventDefault();
-    const f=new FormData(ev.currentTarget), btn=$("button",ev.currentTarget);
+    const formEl=ev.currentTarget;
+    const f=new FormData(formEl), btn=$("button",formEl);
     btn.disabled=true;btn.textContent="در حال ساخت...";
     const {data,error}=await client.functions.invoke("create-member",{body:{email:String(f.get("email")).trim(),full_name:String(f.get("full_name")).trim(),password:String(f.get("password"))}});
     btn.disabled=false;btn.textContent="ساخت حساب";
-    const out=$("#credentialResult");
-    if(error){out.innerHTML='<div class="alert error">ساخت حساب انجام نشد. مطمئن شو تابع create-member در Supabase منتشر شده است. '+esc(error.message)+'</div>';return;}
+    if(error){const out=$("#credentialResult");if(out)out.innerHTML='<div class="alert error">ساخت حساب انجام نشد. تابع create-member را در Supabase منتشر و تنظیم کن. '+esc(error.message)+'</div>';return;}
     const credentialsHTML='<div class="alert success">حساب با موفقیت ساخته شد. ایمیل و رمز را به‌صورت امن به عضو تحویل بده.</div><div class="credentials">نام: '+esc(data.full_name)+'<br>ایمیل ورود: <code>'+esc(data.email)+'</code><br>رمز اولیه: <code>'+esc(f.get("password"))+'</code></div>';
-    ev.currentTarget.reset();
+    formEl.reset();
     await adminMembers();
     const resultBox=$("#credentialResult");
     if(resultBox) resultBox.innerHTML=credentialsHTML;
