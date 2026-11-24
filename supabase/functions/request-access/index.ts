@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const forwarded = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
+  const forwarded = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "unknown";
   const ip = forwarded.split(",")[0].trim().slice(0, 100);
   const ipHash = await hashRequestIp(ip, secretKey);
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
