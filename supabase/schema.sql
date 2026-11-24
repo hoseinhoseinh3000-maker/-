@@ -107,6 +107,21 @@ alter table public.member_entries enable row level security;
 alter table public.announcements enable row level security;
 alter table public.registration_requests enable row level security;
 
+-- Enable live admin notifications for new account requests.
+do $
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (
+       select 1 from pg_publication_tables
+       where pubname = 'supabase_realtime'
+         and schemaname = 'public'
+         and tablename = 'registration_requests'
+     ) then
+    execute 'alter publication supabase_realtime add table public.registration_requests';
+  end if;
+end
+$;
+
 revoke all on public.profiles from anon;
 revoke all on public.member_entries from anon;
 revoke all on public.announcements from anon;
