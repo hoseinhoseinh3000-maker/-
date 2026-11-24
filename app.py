@@ -8,7 +8,7 @@ ROOT=os.path.dirname(os.path.abspath(__file__))
 DB_PATH=os.environ.get("DATABASE_PATH",os.path.join(ROOT,"sarbazan.db"))
 app=Flask(__name__)
 app.secret_key=os.environ.get("SECRET_KEY") or secrets.token_hex(32)
-app.config.update(SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE="Lax",SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE","1")=="1",PERMANENT_SESSION_LIFETIME=28800,MAX_CONTENT_LENGTH=1048576)
+app.config.update(SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE="Lax",SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE","0")=="1",PERMANENT_SESSION_LIFETIME=28800,MAX_CONTENT_LENGTH=1048576)
 
 def db():
  c=sqlite3.connect(DB_PATH,timeout=20);c.row_factory=sqlite3.Row;c.execute("PRAGMA foreign_keys=ON");return c
