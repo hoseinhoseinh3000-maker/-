@@ -13,7 +13,8 @@
     app.innerHTML = '<div class="auth-wrap"><main class="auth-card"><div class="logo">✦</div><p class="eyebrow">تنظیم اولیه</p><h1>اتصال پایگاه داده هنوز انجام نشده</h1><p class="muted">فایل config.js را باز کن و آدرس پروژه Supabase و کلید عمومی anon/publishable را در آن قرار بده. کلید Secret یا Service Role را هرگز اینجا نگذار.</p><div class="alert info">بعد از تنظیم فایل و ذخیره آن در GitHub، صفحه را دوباره باز کن.</div><p class="auth-foot">این صفحه تا زمان اتصال به پایگاه داده، ورود کاربران را فعال نمی‌کند.</p></main></div>';
   }
   function loginView() {
-    app.innerHTML = '<div class="auth-wrap"><main class="auth-card"><div class="logo">✦</div><p class="eyebrow">سامانه یکپارچه فرهنگی</p><h1>سربازان امام زمان</h1><p class="muted">برای ورود به پنل اختصاصی، ایمیل و رمز عبوری را که مدیر در اختیارت گذاشته وارد کن.</p><div id="flash" hidden></div><form id="loginForm"><div class="field"><label>ایمیل / نام کاربری ایمیلی</label><input name="email" type="email" autocomplete="username" required dir="ltr"></div><div class="field"><label>رمز عبور</label><input name="password" type="password" autocomplete="current-password" required dir="ltr"></div><button class="btn primary wide">ورود به پنل من</button></form><div class="auth-foot">ثبت‌نام عمومی غیرفعال است • دسترسی هر عضو جداگانه محافظت می‌شود</div></main></div>';
+    app.innerHTML = '<div class="auth-wrap"><main class="auth-card"><div class="logo">✦</div><p class="eyebrow">سامانه یکپارچه فرهنگی</p><h1>سربازان امام زمان</h1><p class="muted">برای ورود به پنل اختصاصی، ایمیل و رمز عبوری را که مدیر در اختیارت گذاشته وارد کن.</p><div id="flash" hidden></div><form id="loginForm"><div class="field"><label>ایمیل / نام کاربری ایمیلی</label><input name="email" type="email" autocomplete="username" required dir="ltr"></div><div class="field"><label>رمز عبور</label><input name="password" type="password" autocomplete="current-password" required dir="ltr"></div><button class="btn primary wide">ورود به پنل من</button></form><button type="button" class="btn wide" id="requestAccessBtn" style="margin-top:10px">＋ درخواست ساخت حساب جدید</button><div class="auth-foot">ثبت‌نام مستقیم غیرفعال است • درخواست‌ها ابتدا باید توسط مدیر تأیید شوند</div></main></div>';
+    $("#requestAccessBtn").addEventListener("click", requestAccessView);
     $("#loginForm").addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const form = new FormData(ev.currentTarget);
@@ -26,7 +27,7 @@
   }
   function shell(title, subtitle, body, admin) {
     app.innerHTML = '<div class="shell"><aside class="side"><div class="brand"><div class="logo">✦</div><div><b>سربازان امام زمان</b><small>سامانه مدیریت فرهنگی</small></div></div><div class="navlabel">فضای کاری</div><nav class="nav">'+
-      (admin?'<button data-go="home" class="active">▦ نمای کلی</button><button data-go="members">♙ مدیریت اعضا</button><button data-go="announcements">✧ اطلاعیه عمومی</button>':'<button data-go="home" class="active">▦ پنل اختصاصی من</button>')+
+      (admin?'<button data-go="home" class="active">▦ نمای کلی</button><button data-go="members">♙ مدیریت اعضا</button><button data-go="requests">✉ درخواست‌های حساب</button><button data-go="announcements">✧ اطلاعیه عمومی</button>':'<button data-go="home" class="active">▦ پنل اختصاصی من</button>')+
       '<button data-go="password">⚿ تغییر رمز عبور</button></nav><div class="sidefoot">● اتصال مرکزی فعال<br>دسترسی‌ها توسط پایگاه داده کنترل می‌شوند.</div></aside><main class="main"><header class="top"><div><p class="eyebrow">مرکز مدیریت فرهنگی</p><h1>'+esc(title)+'</h1><div class="panelhint">'+esc(subtitle)+'</div></div><div class="userchip"><span class="avatar">'+esc(shortName(profile.full_name))+'</span><span>'+esc(profile.full_name)+'<br><small class="muted">'+(admin?'مدیر سامانه':'عضو مجموعه')+'</small></span><button class="btn small" id="logoutBtn">خروج</button></div></header><div id="flash" hidden></div><section id="page">'+body+'</section><div class="footer">پنل اختصاصی • اطلاعات به‌صورت مرکزی و آنلاین ذخیره می‌شود</div></main></div>';
     $("#logoutBtn").addEventListener("click", async()=>{await client.auth.signOut();authUser=null;profile=null;loginView();});
     document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.go)));
@@ -42,15 +43,40 @@
     if(profile.role==="admin") await adminHome(); else await memberHome();
   }
   async function adminHome() {
-    const [{count:members},{count:entries},{count:notices}] = await Promise.all([
+    const [{count:members},{count:entries},{count:notices},{count:requests}] = await Promise.all([
       client.from("profiles").select("*",{count:"exact",head:true}).eq("role","member"),
       client.from("member_entries").select("*",{count:"exact",head:true}),
-      client.from("announcements").select("*",{count:"exact",head:true})
+      client.from("announcements").select("*",{count:"exact",head:true}),
+      client.from("registration_requests").select("*",{count:"exact",head:true}).eq("status","pending")
     ]);
-    const body='<div class="hero"><h2>پنل مدیریت مرکزی</h2><p>برای هر عضو حساب بساز، اطلاعات اختصاصی ارسال کن و اطلاعیه‌های عمومی را مدیریت کن. هر عضو تنها اطلاعات حساب خودش را می‌بیند.</p><div class="hero-actions"><button class="btn primary" data-go="members">مدیریت حساب اعضا</button><button class="btn" data-go="announcements">انتشار اطلاعیه</button></div></div><div class="grid"><div class="stat"><small>تعداد اعضا</small><strong>'+(members??0)+'</strong></div><div class="stat"><small>اطلاعات ثبت‌شده</small><strong>'+(entries??0)+'</strong></div><div class="stat"><small>اطلاعیه‌ها</small><strong>'+(notices??0)+'</strong></div><div class="stat"><small>نقش حساب</small><strong style="font-size:18px">مدیر</strong></div></div><div class="panel"><div class="panelhead"><h2>شروع سریع</h2></div><p class="muted">۱) از مدیریت اعضا حساب جدید بساز. ۲) عضو را انتخاب کن و اطلاعات اختصاصی‌اش را ذخیره کن. ۳) نام کاربری ایمیلی و رمز اولیه را امن به خودش تحویل بده.</p></div>';
-    shell("نمای کلی سامانه","گزارش حساب‌ها و داده‌های مرکزی",body,true);
-    document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.go)));
+    const body='<div class="hero"><h2>پنل مدیریت مرکزی</h2><p>اعضا، درخواست‌های ورود و پیام‌های اختصاصی را از یک مرکز مدیریت کن. درخواست حساب‌های جدید فقط بعد از تأیید تو به حساب واقعی تبدیل می‌شوند.</p><div class="hero-actions"><button class="btn primary" data-go="members">مدیریت حساب اعضا</button><button class="btn" data-go="requests">بررسی درخواست‌ها ('+(requests??0)+')</button><button class="btn" data-go="announcements">انتشار اطلاعیه</button></div></div><div class="grid"><div class="stat"><small>تعداد اعضا</small><strong>'+(members??0)+'</strong></div><div class="stat"><small>اطلاعات ثبت‌شده</small><strong>'+(entries??0)+'</strong></div><div class="stat"><small>اطلاعیه‌ها</small><strong>'+(notices??0)+'</strong></div><div class="stat"><small>درخواست‌های منتظر</small><strong>'+(requests??0)+'</strong></div></div><div class="panel"><div class="panelhead"><h2>مدیریت هوشمند مجموعه</h2><span class="badge">مرکز مدیر</span></div><p class="muted">۱) درخواست جدید را بررسی کن. ۲) با تأیید تو، حساب ساخته می‌شود و رمز موقت فقط یک‌بار به تو نمایش داده می‌شود. ۳) رمز را از راه امن به عضو تحویل بده. ۴) هر پیام را داخل پنل اختصاصی همان عضو ثبت کن.</p></div>';
+    shell("نمای کلی سامانه","گزارش حساب‌ها و درخواست‌های اعضا",body,true);
   }
+  function requestAccessView() {
+    app.innerHTML = '<div class="auth-wrap"><main class="auth-card"><div class="logo">✦</div><p class="eyebrow">درخواست عضویت</p><h1>درخواست ساخت حساب جدید</h1><p class="muted">فرم را تکمیل کن. درخواست برای مدیر مجموعه ارسال می‌شود؛ تا زمان تأیید، حساب کاربری ساخته نمی‌شود.</p><div id="flash" hidden></div><form id="requestForm"><div class="field"><label>نام و نام خانوادگی</label><input name="full_name" required minlength="2" maxlength="120" autocomplete="name"></div><div class="field"><label>ایمیل معتبر</label><input name="email" type="email" required maxlength="254" autocomplete="email" dir="ltr"></div><div class="field"><label>شماره تماس (اختیاری)</label><input name="phone" type="tel" maxlength="32" autocomplete="tel"></div><div class="field"><label>علت درخواست / توضیح کوتاه</label><textarea name="reason" required minlength="8" maxlength="1200" placeholder="مثلاً نام گروه یا دلیل نیاز به حساب..."></textarea></div><div aria-hidden="true" style="position:absolute;right:-10000px;top:auto;width:1px;height:1px;overflow:hidden"><label>این قسمت را خالی بگذار<input name="website" tabindex="-1" autocomplete="off"></label></div><button class="btn primary wide">ارسال درخواست به مدیر</button></form><button type="button" class="btn wide" id="backToLogin" style="margin-top:9px">بازگشت به ورود</button><div class="auth-foot">اطلاعات این فرم فقط برای بررسی درخواست استفاده می‌شود.</div></main></div>';
+    $("#backToLogin").addEventListener("click", loginView);
+    $("#requestForm").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const formEl=ev.currentTarget;
+      const f=new FormData(formEl);
+      const btn=$("button[type=submit]",formEl);
+      const payload={
+        full_name:String(f.get("full_name")||"").trim(),
+        email:String(f.get("email")||"").trim(),
+        phone:String(f.get("phone")||"").trim(),
+        reason:String(f.get("reason")||"").trim(),
+        website:String(f.get("website")||"")
+      };
+      btn.disabled=true;btn.textContent="در حال ارسال درخواست...";
+      const {data,error}=await client.functions.invoke("request-access",{body:payload});
+      btn.disabled=false;btn.textContent="ارسال درخواست به مدیر";
+      if(error){notice("ارسال درخواست انجام نشد. ممکن است تابع request-access هنوز منتشر نشده یا دسترسی عمومی آن تنظیم نشده باشد. "+error.message,"error");return;}
+      if(data?.error){notice(data.error,"error");return;}
+      app.innerHTML='<div class="auth-wrap"><main class="auth-card"><div class="logo">✓</div><p class="eyebrow">درخواست ثبت شد</p><h1>درخواستت به مدیر ارسال شد</h1><p class="muted">اطلاعاتت با موفقیت ثبت شد. اگر مدیر درخواست را تأیید کند، روش دریافت اطلاعات ورود را از طریق ایمیل یا ارتباطی که با مجموعه داری پیگیری کن.</p><div class="alert success">درخواست در صف بررسی قرار گرفت. لطفاً از ارسال چندباره درخواست خودداری کن.</div><button class="btn primary wide" id="returnLogin">بازگشت به صفحه ورود</button></main></div>';
+      $("#returnLogin").addEventListener("click",loginView);
+    });
+  }
+
   async function adminMembers() {
     const {data,error}=await client.from("profiles").select("id,email,full_name,role,is_active,created_at").eq("role","member").order("created_at",{ascending:false});
     if(error){notice(error.message,"error");return;}
@@ -108,6 +134,35 @@
     if(error){notice("حذف انجام نشد: "+error.message,"error");return;}
     await openMember(memberId);notice("اطلاعات حذف شد.","success");
   }
+  async function adminRequests(credential = null) {
+    const {data,error}=await client.from("registration_requests")
+      .select("id,full_name,email,phone,reason,status,created_at,reviewed_at")
+      .order("created_at",{ascending:false});
+    if(error){notice("بارگیری درخواست‌ها انجام نشد. ابتدا فایل schema.sql جدید را در SQL Editor اجرا کن. "+error.message,"error");return;}
+    const pending=(data||[]).filter(r=>r.status==="pending");
+    const cards=(data||[]).map(r=>{
+      const statusClass=r.status==="approved"?"":(r.status==="rejected"?"off":"pending");
+      const statusText={pending:"منتظر بررسی",processing:"در حال بررسی",approved:"تأیید و حساب ساخته شد",rejected:"رد شده"}[r.status]||r.status;
+      const buttons=r.status==="pending"?'<div class="actions"><button class="btn good small" data-approve="'+esc(r.id)+'">✓ تأیید و ساخت حساب</button><button class="btn danger small" data-reject="'+esc(r.id)+'">رد درخواست</button></div>':'';
+      return '<article class="entry"><div class="panelhead"><h3>'+esc(r.full_name)+'</h3><span class="badge '+statusClass+'">'+statusText+'</span></div><p>ایمیل: '+esc(r.email)+'<br>تماس: '+esc(r.phone||"ثبت نشده")+'<br>توضیح: '+esc(r.reason||"—")+'</p><small>زمان درخواست: '+esc(new Date(r.created_at).toLocaleString("fa-IR"))+'</small>'+buttons+'</article>';
+    }).join("") || '<div class="empty">هنوز درخواستی ثبت نشده است.</div>';
+    const credentialHTML=credential?'<div class="credentials" id="approvedCredential"><b>حساب با تأیید تو ساخته شد</b><br>نام: '+esc(credential.full_name)+'<br>ایمیل: <code>'+esc(credential.email)+'</code><br>رمز موقت (فقط همین بار نمایش داده می‌شود): <code id="tempPassword">'+esc(credential.temporary_password)+'</code><div class="actions"><button class="btn small primary" id="copyTempPassword">کپی رمز</button></div><p class="panelhint">رمز را فقط به صاحب حساب و از راه امن تحویل بده. عضو پس از ورود می‌تواند آن را تغییر دهد.</p></div>':'';
+    const body='<div class="section"><div><h2>درخواست‌های ساخت حساب</h2><p>افرادی که هنوز حساب ندارند از صفحه ورود درخواست می‌فرستند؛ تو تصمیم نهایی را می‌گیری.</p></div><span class="badge">'+pending.length+' منتظر بررسی</span></div>'+credentialHTML+'<div class="panel"><div class="panelhead"><h2>صف درخواست‌ها</h2><span class="badge">'+(data||[]).length+' کل درخواست</span></div>'+cards+'</div>';
+    shell("درخواست‌های حساب","بررسی، تأیید یا رد درخواست عضویت",body,true);
+    document.querySelectorAll("[data-approve]").forEach(b=>b.addEventListener("click",()=>reviewRequest(b.dataset.approve,"approve")));
+    document.querySelectorAll("[data-reject]").forEach(b=>b.addEventListener("click",()=>reviewRequest(b.dataset.reject,"reject")));
+    $("#copyTempPassword")?.addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("#tempPassword").textContent);notice("رمز کپی شد.","success");}catch(_){notice("کپی خودکار ممکن نیست؛ رمز را دستی کپی کن.","info");}});
+  }
+  async function reviewRequest(id,decision) {
+    const label=decision==="approve"?"با تأیید این درخواست یک حساب کاربری واقعی ساخته می‌شود. رمز موقت فقط یک‌بار نمایش داده خواهد شد.":"این درخواست رد شود؟";
+    if(!confirm(label))return;
+    const {data,error}=await client.functions.invoke("review-registration",{body:{request_id:id,decision}});
+    if(error){notice("بررسی درخواست انجام نشد. تابع review-registration را منتشر کن. "+error.message,"error");return;}
+    if(data?.error){notice(data.error,"error");return;}
+    if(decision==="approve") await adminRequests(data);
+    else {await adminRequests();notice("درخواست رد شد.","success");}
+  }
+
   async function adminAnnouncements() {
     const {data,error}=await client.from("announcements").select("id,title,body,created_at").order("created_at",{ascending:false});
     if(error){notice(error.message,"error");return;}
@@ -154,6 +209,7 @@
     if(where==="home"){if(profile.role==="admin")await adminHome();else await memberHome();}
     else if(where==="members" && profile.role==="admin")await adminMembers();
     else if(where==="announcements" && profile.role==="admin")await adminAnnouncements();
+    else if(where==="requests" && profile.role==="admin")await adminRequests();
     else if(where==="password")passwordPage();
   }
   async function start() {
