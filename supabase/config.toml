@@ -1,0 +1,13 @@
+project_id = "sarbazan-imamzaman"
+
+# درخواست ساخت حساب، ورودی عمومی دارد.
+# فقط همین تابع JWT لازم ندارد؛ داخل تابع محدودیت تعداد درخواست و اعتبارسنجی اجرا می‌شود.
+[functions.request-access]
+verify_jwt = false
+
+# این دو تابع فقط از نشست معتبر مدیر استفاده می‌کنند.
+[functions.review-registration]
+verify_jwt = true
+
+[functions.create-member]
+verify_jwt = true
