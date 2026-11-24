@@ -14,14 +14,12 @@ function reply(status: number, payload: Record<string, unknown>) {
 }
 
 function getSecretKey(): string {
-  const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
-  if (legacy) return legacy;
   try {
     const parsed = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
-    return String(parsed.default || "");
-  } catch {
-    return "";
-  }
+    const current = String(parsed.default || "");
+    if (current) return current;
+  } catch { /* use legacy key if present */ }
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
 }
 
 async function hashRequestIp(ip: string, secret: string): Promise<string> {
